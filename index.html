@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -228,12 +229,12 @@
   .dot.amber{background:var(--amber);animation:dot-pulse-amber 2s ease-in-out infinite;}
   .dot.red{background:var(--red);animation:dot-pulse-red 1.2s ease-in-out infinite;}
   @keyframes dot-pulse-amber{
-    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--amber) 45%, transparent);}
-    50%{box-shadow:0 0 0 5px color-mix(in srgb, var(--amber) 0%, transparent);}
+    0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb, var(--amber) 45%, transparent);}
+    50%{transform:scale(1.5);box-shadow:0 0 0 5px color-mix(in srgb, var(--amber) 0%, transparent);}
   }
   @keyframes dot-pulse-red{
-    0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent);}
-    50%{box-shadow:0 0 0 7px color-mix(in srgb, var(--red) 0%, transparent);}
+    0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent);}
+    50%{transform:scale(1.6);box-shadow:0 0 0 7px color-mix(in srgb, var(--red) 0%, transparent);}
   }
   @media (prefers-reduced-motion: reduce){
     .dot.amber, .dot.red{animation:none;}
