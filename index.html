@@ -1,4 +1,4 @@
-
+100%
 <!doctype html>
 <html lang="en">
 <head>
@@ -29,7 +29,19 @@
       "@id": "https://dontfixyourseo.com/#organization",
       "name": "Don't Fix Your SEO",
       "url": "https://dontfixyourseo.com/",
-      "logo": "https://dontfixyourseo.com/favicon.svg"
+      "logo": "https://dontfixyourseo.com/favicon.svg",
+      "description": "Free, plain-English website audits for small local businesses — checking whether customers can find, understand and trust your website, and take action.",
+      "telephone": "+447760881000",
+      "email": "tony.posgate@gmail.com",
+      "address": { "@type": "PostalAddress", "addressCountry": "GB" },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "telephone": "+447760881000",
+        "email": "tony.posgate@gmail.com",
+        "areaServed": "GB",
+        "availableLanguage": "English"
+      }
     },
     {
       "@type": "WebSite",
@@ -37,6 +49,48 @@
       "url": "https://dontfixyourseo.com/",
       "name": "Don't Fix Your SEO",
       "publisher": { "@id": "https://dontfixyourseo.com/#organization" }
+    },
+    {
+      "@type": "Service",
+      "@id": "https://dontfixyourseo.com/#service",
+      "name": "Free Website Audit",
+      "serviceType": "Website audit",
+      "description": "A free, plain-English website audit covering four questions: can customers find you, understand you, trust you, and take action. Includes a colour-coded result, what's already working, the three biggest problems and three priority actions.",
+      "provider": { "@id": "https://dontfixyourseo.com/#organization" },
+      "areaServed": { "@type": "Country", "name": "United Kingdom" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "GBP",
+        "description": "Initial check and first full report are free. Paid help is optional."
+      },
+      "url": "https://dontfixyourseo.com/"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://dontfixyourseo.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this just a sales pitch for more SEO?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No — the whole point is to check first. If nothing needs fixing, we'll tell you that, and there's no pressure to buy anything." }
+        },
+        {
+          "@type": "Question",
+          "name": "What does it cost?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The initial check and your first full report are free. You only pay if you decide you want help making changes." }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The illustrative preview is instant. Your real, full report usually comes back within a few working days." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I have to talk to a salesperson?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. You get the report either way. Tony's happy to talk it through if you want to, but there's no obligation." }
+        }
+      ]
     }
   ]
 }
