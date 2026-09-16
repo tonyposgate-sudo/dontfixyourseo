@@ -69,7 +69,7 @@ export async function onRequestPost(context) {
     fetchWithTimeout(origin + '/llms.txt', 5000).catch(() => null),
   ]);
 
-  const signals = analyzeHtml(html);
+  const signals = analyzeHtml(html, origin);
   signals.https = parsed.protocol === 'https:';
   signals.robotsPresent = !!(robotsRes && robotsRes.ok);
   signals.sitemapPresent = !!(sitemapRes && sitemapRes.ok);
@@ -122,9 +122,75 @@ async function fetchWithTimeout(url, ms, options) {
   }
 }
 
+// Recognised same-site route slugs for a dedicated contact/enquiry page.
+// Matched against the LAST path segment only (so /contact, /en/contact,
+// /pages/contact-us.html, etc. all match) — deliberately NOT matched against
+// arbitrary substrings of the path or against surrounding page text, so an
+// unrelated page merely mentioning "contact" or "support" cannot qualify.
+const CONTACT_PATH_SLUGS = new Set([
+  'contact', 'contact-us', 'contactus', 'contact_us',
+  'support',
+  'get-in-touch', 'getintouch', 'get_in_touch',
+  'enquire', 'enquiry', 'enquiries', 'inquire', 'inquiry', 'inquiries',
+  'book', 'booking',
+  'consultation', 'consultations',
+  'request-a-quote', 'requestaquote', 'request_a_quote',
+]);
+
+// Does this page link to a dedicated contact/enquiry page on the SAME site?
+// e.g. <a href="/contact">Contact & Support</a> on the homepage.
+//
+// This is deliberately conservative and link-based only (no surrounding-text
+// matching, no substring matching): a genuine <a href> is required, it must
+// resolve (relative or absolute) to the site's own origin, and its final
+// path segment must be an exact match against CONTACT_PATH_SLUGS. That's
+// enough to recognise normal contact-page architecture without being fooled
+// by "#" placeholders, javascript: handlers, or ordinary copy that merely
+// mentions the word "contact"/"support" near an unrelated link.
+export function hasInternalContactLink(html, origin) {
+  if (!origin) return false;
+
+  let originHost;
+  try {
+    originHost = new URL(origin).hostname.toLowerCase();
+  } catch (e) {
+    return false;
+  }
+
+  const anchorRe = /<a\b[^>]*\bhref\s*=\s*["']([^"']*)["'][^>]*>/gi;
+  let m;
+  while ((m = anchorRe.exec(html))) {
+    const rawHref = (m[1] || '').trim();
+    if (!rawHref || rawHref.startsWith('#')) continue; // no destination / same-page anchor
+    if (/^(javascript|mailto|tel):/i.test(rawHref)) continue; // handled separately, or not navigable
+
+    let resolved;
+    try {
+      resolved = new URL(rawHref, origin);
+    } catch (e) {
+      continue; // malformed href — skip rather than fail the whole check
+    }
+
+    if (resolved.hostname.toLowerCase() !== originHost) continue; // off-site link
+
+    const segments = resolved.pathname.split('/').filter(Boolean);
+    if (!segments.length) continue; // links back to the homepage itself don't count
+
+    const slug = segments[segments.length - 1]
+      .toLowerCase()
+      .replace(/\.(html?|php|aspx?|jsp)$/i, ''); // ignore a trailing file extension
+
+    if (CONTACT_PATH_SLUGS.has(slug)) return true;
+  }
+  return false;
+}
+
 // Pull real, checkable signals out of the raw HTML. No API key needed —
 // this is the core of what makes results genuine rather than illustrative.
-export function analyzeHtml(html) {
+// `origin` (e.g. "https://example.co.uk") is optional but needed to resolve
+// relative links for the internal-contact-page check below; when omitted,
+// that one signal is simply skipped rather than throwing.
+export function analyzeHtml(html, origin) {
   const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
   const textOnly = stripped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -166,6 +232,7 @@ export function analyzeHtml(html) {
   const telLink = /href=["']tel:/i.test(html);
   const contactFormPresent = /<form[\s\S]*?<\/form>/i.test(html);
   const addressHint = /\b(street|st\.|road|rd\.|avenue|ave\.|lane|drive|way)\b/i.test(textOnly);
+  const internalContactLinkPresent = hasInternalContactLink(html, origin);
 
   return {
     title, titleLength: title ? title.length : 0,
@@ -173,6 +240,7 @@ export function analyzeHtml(html) {
     viewport, canonical, ogTitle, h1Count,
     schemaTypes, hasLocalBusinessSchema, hasReviewSchema, hasFaqSchema,
     phonePresent, mailtoLink, telLink, contactFormPresent, addressHint,
+    internalContactLinkPresent,
   };
 }
 
@@ -239,7 +307,9 @@ async function scoreWithClaude(html, hostname, apiKey) {
 
 // Turn real signals into the same shape the page's front-end already
 // expects: an overall badge + 4 rows (find / understand / trust / act).
-function buildResult(s, pageSpeed, aiNote, hostname) {
+// Exported (additively — call sites elsewhere in this file are unaffected)
+// so it can be unit-tested directly against synthetic signal objects.
+export function buildResult(s, pageSpeed, aiNote, hostname) {
   const rows = [];
 
   // 1) Can customers find you?
@@ -289,7 +359,7 @@ function buildResult(s, pageSpeed, aiNote, hostname) {
 
   // 4) Can customers take action?
   {
-    const contactCount = [s.phonePresent, s.mailtoLink || s.telLink, s.contactFormPresent].filter(Boolean).length;
+    const contactCount = [s.phonePresent, s.mailtoLink || s.telLink, s.contactFormPresent, s.internalContactLinkPresent].filter(Boolean).length;
     let level = 'red';
     if (contactCount >= 2) level = 'green';
     else if (contactCount === 1) level = 'amber';
@@ -297,6 +367,7 @@ function buildResult(s, pageSpeed, aiNote, hostname) {
     if (s.phonePresent) bits.push('a phone number');
     if (s.mailtoLink || s.telLink) bits.push('a clickable contact link');
     if (s.contactFormPresent) bits.push('a contact form');
+    if (s.internalContactLinkPresent) bits.push('a link to a dedicated contact page');
     let note = bits.length ? 'Found ' + bits.join(', ') : 'No phone, contact link or form found on the page';
     if (!s.viewport) note += (bits.length ? ' — but no mobile viewport tag, check it works on phones' : ' (and no mobile viewport tag either)');
     rows.push([level, note]);
