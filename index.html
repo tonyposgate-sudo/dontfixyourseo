@@ -799,7 +799,16 @@
       mailtoFallback(name, email, site);
       return;
     }
-
+    // Additive: also email the visitor a fuller copy of their report via our
+    // own /api/send-report endpoint. This is completely independent of the
+    // Formspree notification above — if it fails, or the backend isn't
+    // deployed yet, nothing here changes; the existing "we'll be in touch"
+    // flow (and everything else on the page) is untouched either way.
+    fetch('/api/send-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: site, email: email, name: name })
+    }).catch(function(){ /* silent on purpose — this is a bonus, not the main flow */ });
     mcSubmit.disabled = true;
     mcSubmit.innerHTML = 'Sending…';
     miniStatus.textContent = '';
