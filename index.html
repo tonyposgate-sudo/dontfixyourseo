@@ -3,7 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Don't Fix Your SEO</title>
+<title>Don't Fix Your SEO | Plain-English Website Audits</title>
+<meta name="description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+<link rel="canonical" href="https://dontfixyourseo.com/">
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dontfixyourseo.com/">
+<meta property="og:title" content="Don't Fix Your SEO | Plain-English Website Audits">
+<meta property="og:description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Don't Fix Your SEO | Plain-English Website Audits">
+<meta name="twitter:description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://dontfixyourseo.com/#organization",
+      "name": "Don't Fix Your SEO",
+      "url": "https://dontfixyourseo.com/",
+      "logo": "https://dontfixyourseo.com/favicon.svg"
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://dontfixyourseo.com/#website",
+      "url": "https://dontfixyourseo.com/",
+      "name": "Don't Fix Your SEO",
+      "publisher": { "@id": "https://dontfixyourseo.com/#organization" }
+    }
+  ]
+}
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
@@ -421,16 +457,28 @@
           <p class="check-footnote" id="check-footnote">Illustrative preview, not a live scan of the address above. Your real report checks the actual site.</p>
           <div class="mini-capture">
             <strong style="font-size:14.5px;">Want the full breakdown — free?</strong>
-            <div class="cap-row">
-              <label for="mc-name" class="sr-only">Name</label>
-              <input class="field-input" id="mc-name" type="text" placeholder="Name" />
-              <label for="mc-email" class="sr-only">Email</label>
-              <input class="field-input" id="mc-email" type="email" placeholder="Email" />
-            </div>
-            <div class="cap-row" style="align-items:center;">
-              <button class="btn btn-sm" id="mc-submit" type="button">Get my full report <span class="arrow">→</span></button>
-              <span class="mini-status" id="mini-status"></span>
-            </div>
+            <!-- Genuine semantic <form>: a real HTML form element wrapping the
+                 existing enquiry fields, so the enquiry mechanism is detectable
+                 in the raw page markup (not just after JavaScript runs). The
+                 action/method below is a real, working no-JS fallback that
+                 posts to the same Formspree endpoint the JS path already uses
+                 — nothing about the destination changes. When JavaScript is
+                 available (the normal case), the submit handler below calls
+                 preventDefault() and runs the exact same fetch-based flow as
+                 before; this form tag changes nothing about that behaviour. -->
+            <form id="mc-form" action="https://formspree.io/f/mwlkgbnn" method="POST">
+              <div class="cap-row">
+                <label for="mc-name" class="sr-only">Name</label>
+                <input class="field-input" id="mc-name" name="name" type="text" placeholder="Name" />
+                <label for="mc-email" class="sr-only">Email</label>
+                <input class="field-input" id="mc-email" name="email" type="email" placeholder="Email" />
+                <input type="hidden" id="mc-site-hidden" name="website" value="" />
+              </div>
+              <div class="cap-row" style="align-items:center;">
+                <button class="btn btn-sm" id="mc-submit" type="submit">Get my full report <span class="arrow">→</span></button>
+                <span class="mini-status" id="mini-status"></span>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -769,9 +817,11 @@
   // this falls back to the original mailto flow automatically — nothing breaks.
   var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mwlkgbnn';
 
+  var mcForm = document.getElementById('mc-form');
   var mcSubmit = document.getElementById('mc-submit');
   var miniStatus = document.getElementById('mini-status');
   var mcSubmitLabel = mcSubmit.innerHTML;
+  var mcSiteHidden = document.getElementById('mc-site-hidden');
 
   function mailtoFallback(name, email, site){
     var subject = 'Full website check request — ' + site;
@@ -785,10 +835,18 @@
     miniStatus.textContent = 'Opening your email app — hit send there to finish.';
   }
 
-  mcSubmit.addEventListener('click', function(){
+  // Genuine <form> now wraps these fields (see the markup above), so this
+  // listens for the form's submit event rather than the button's click event.
+  // preventDefault() stops the native POST so the exact same JS-driven flow
+  // below still runs exactly as before; a real <form action method> is only
+  // used if JavaScript never runs at all (a strict improvement over before,
+  // when the button — type="button", no form — did nothing without JS).
+  mcForm.addEventListener('submit', function(e){
+    e.preventDefault();
     var name = document.getElementById('mc-name').value.trim();
     var email = document.getElementById('mc-email').value.trim();
     var site = currentSite();
+    if (mcSiteHidden) { mcSiteHidden.value = site; }
 
     if (!email) {
       miniStatus.textContent = 'Add your email so we know where to send it.';
