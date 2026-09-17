@@ -1,3 +1,5 @@
+
+
 // Cloudflare Pages Function — real website check
 // Route: POST /api/check   Body: { "url": "example.co.uk" }
 //
@@ -399,9 +401,70 @@ export function buildResult(s, pageSpeed, aiNote, hostname) {
     pageSpeed,
     speedNote,
     aiNote: aiNote && aiNote.reason ? aiNote : null,
+    checkedAt: new Date().toISOString(),
+    summary: summariseRows(rows),
+    nextStep: nextStepFor(rows),
   };
 }
 
 function capitalize(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
+
+const NUMBER_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six' };
+function numberWord(n) {
+  return NUMBER_WORDS[n] || String(n);
+}
+
+// Builds an accurate one-line summary purely from the actual counts of
+// green/amber/red rows — never from the qualitative `title` above, so the
+// wording always matches what was actually found. Exported so it can be
+// tested directly against synthetic row combinations (all-green, mixed
+// counts, etc.) without needing a live fetch.
+export function summariseRows(rows) {
+  const total = rows.length;
+  const counts = { green: 0, amber: 0, red: 0 };
+  rows.forEach((r) => { counts[r[0]] = (counts[r[0]] || 0) + 1; });
+
+  if (counts.green === total) {
+    return 'Your homepage passed these ' + numberWord(total) + ' basic checks.';
+  }
+  if (counts.green === total - 1 && counts.amber === 1) {
+    return capitalize(numberWord(counts.green)) + ' checks passed. One area is worth checking.';
+  }
+  if (counts.green === total - 1 && counts.red === 1) {
+    return capitalize(numberWord(counts.green)) + ' checks passed. One area needs attention.';
+  }
+
+  // Any other mix: state accurate counts for whichever levels are actually present.
+  const parts = [];
+  if (counts.green) parts.push(numberWord(counts.green) + (counts.green === 1 ? ' check passed' : ' checks passed'));
+  if (counts.amber) parts.push(numberWord(counts.amber) + (counts.amber === 1 ? ' area worth checking' : ' areas worth checking'));
+  if (counts.red) parts.push(numberWord(counts.red) + (counts.red === 1 ? ' area needs attention' : ' areas need attention'));
+  if (!parts.length) return 'No results to summarise.';
+  return capitalize(parts.join(', ')) + '.';
+}
+
+// Row-topic next-step text, used only when that row is the one chosen below.
+// Deliberately practical and non-presumptuous: no automatic "rebuild your
+// site" or "buy schema" recommendation — just what to go and check.
+const NEXT_STEP_BY_ROW = [
+  'Check that your site shows up in Google for your business name, and that a sitemap and robots.txt are in place — these help search engines and AI tools find your site.',
+  'Review your homepage description so it clearly summarises your business.',
+  'Check that clear business details, reviews or photos are easy to find on your homepage — these help visitors trust the business quickly.',
+  'Check that visitors can easily reach a working contact page, email address, telephone number or enquiry form.',
+];
+
+// Picks ONE next step from the actual findings: the first red row (in row
+// order), else the first amber row, else — if everything passed — says so
+// plainly rather than inventing work. Exported for the same testing reason
+// as summariseRows above.
+export function nextStepFor(rows) {
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] === 'red') return NEXT_STEP_BY_ROW[i] || 'Check this area manually before making changes.';
+  }
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] === 'amber') return NEXT_STEP_BY_ROW[i] || 'Check this area manually before making changes.';
+  }
+  return 'No changes are indicated by these basic checks. A deeper review is optional.';
 }
