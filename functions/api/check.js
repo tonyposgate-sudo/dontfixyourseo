@@ -1,407 +1,1201 @@
-// Cloudflare Pages Function — real website check
-// Route: POST /api/check   Body: { "url": "example.co.uk" }
-//
-// Works with ZERO configuration: fetches the site itself plus robots.txt /
-// sitemap.xml / llms.txt, and scores it on real, rule-based signals mapped
-// onto the same four questions used on the page (find / understand / trust /
-// act). Two optional upgrades, enabled only if you add the matching
-// environment variable in the Cloudflare Pages project settings:
-//
-//   PAGESPEED_API_KEY   -> adds real Core Web Vitals / mobile-speed scoring
-//                          via Google's PageSpeed Insights API (free).
-//   ANTHROPIC_API_KEY   -> adds one AI-written sentence judging whether an
-//                          AI search assistant (ChatGPT, Claude, etc.) could
-//                          understand and recommend the business from the
-//                          page content.
-//
-// Neither key is required for this to return real, non-random results.
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Don't Fix Your SEO | Plain-English Website Audits</title>
+<meta name="description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+<link rel="canonical" href="https://dontfixyourseo.com/">
 
-export async function onRequestOptions() {
-  return new Response(null, { headers: corsHeaders() });
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dontfixyourseo.com/">
+<meta property="og:title" content="Don't Fix Your SEO | Plain-English Website Audits">
+<meta property="og:description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Don't Fix Your SEO | Plain-English Website Audits">
+<meta name="twitter:description" content="See what may be holding your website back with a plain-English audit covering visibility, clarity, trust and customer action.">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://dontfixyourseo.com/#organization",
+      "name": "Don't Fix Your SEO",
+      "url": "https://dontfixyourseo.com/",
+      "logo": "https://dontfixyourseo.com/favicon.svg",
+      "description": "Free, plain-English website audits for small local businesses — checking whether customers can find, understand and trust your website, and take action.",
+      "telephone": "+447760881000",
+      "email": "tony.posgate@gmail.com",
+      "founder": { "@id": "https://dontfixyourseo.com/#tony" },
+      "address": { "@type": "PostalAddress", "addressCountry": "GB" },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "telephone": "+447760881000",
+        "email": "tony.posgate@gmail.com",
+        "areaServed": "GB",
+        "availableLanguage": "English"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/in/tony-posgate-8213a718/"
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://dontfixyourseo.com/#tony",
+      "name": "Tony Posgate",
+      "jobTitle": "Founder",
+      "worksFor": { "@id": "https://dontfixyourseo.com/#organization" },
+      "url": "https://dontfixyourseo.com/about",
+      "knowsAbout": ["Website audits", "Small business websites", "SEO", "Website trust signals"],
+      "sameAs": [
+        "https://www.linkedin.com/in/tony-posgate-8213a718/"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://dontfixyourseo.com/#website",
+      "url": "https://dontfixyourseo.com/",
+      "name": "Don't Fix Your SEO",
+      "publisher": { "@id": "https://dontfixyourseo.com/#organization" }
+    },
+    {
+      "@type": "Service",
+      "@id": "https://dontfixyourseo.com/#service",
+      "name": "Free Website Audit",
+      "serviceType": "Website audit",
+      "description": "A free, plain-English website audit covering four questions: can customers find you, understand you, trust you, and take action. Includes a colour-coded result, what's already working, the three biggest problems and three priority actions.",
+      "provider": { "@id": "https://dontfixyourseo.com/#organization" },
+      "areaServed": { "@type": "Country", "name": "United Kingdom" },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "GBP",
+        "description": "Initial check and first full report are free. Paid help is optional."
+      },
+      "url": "https://dontfixyourseo.com/"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://dontfixyourseo.com/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is this just a sales pitch for more SEO?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No — the whole point is to check first. If nothing needs fixing, we'll tell you that, and there's no pressure to buy anything." }
+        },
+        {
+          "@type": "Question",
+          "name": "What does it cost?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The initial check and your first full report are free. You only pay if you decide you want help making changes." }
+        },
+        {
+          "@type": "Question",
+          "name": "How long does it take?",
+          "acceptedAnswer": { "@type": "Answer", "text": "The illustrative preview is instant. Your real, full report usually comes back within a few working days." }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I have to talk to a salesperson?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. You get the report either way. Tony's happy to talk it through if you want to, but there's no obligation." }
+        }
+      ]
+    }
+  ]
 }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
-
-  let body;
-  try {
-    body = await request.json();
-  } catch (e) {
-    return json({ error: 'Send a JSON body like {"url":"yourbusiness.co.uk"}' }, 400);
+  :root{
+    --bg:#f5f2ec;
+    --bg-alt:#ece5d8;
+    --bg-raised:#ffffff;
+    --ink:#171512;
+    --ink-dim:#5c574c;
+    --accent:#c2410c;
+    --accent-soft:#ff8a5c;
+    --accent-ink:#fff7ed;
+    --accent-2:#0f766e;
+    --border:rgba(23,21,18,0.12);
+    --border-strong:rgba(23,21,18,0.24);
+    --green:#0f8a5f; --green-ink:#ffffff;
+    --amber:#b45309; --amber-ink:#ffffff;
+    --red:#b42318; --red-ink:#ffffff;
+    --gray:#6b6660; --gray-ink:#ffffff;
+    --vc-panel-bg:#eaf6ee; --vc-panel-border:rgba(15,138,95,0.28); --vc-btn:#0f6e3e; --vc-btn-ink:#ffffff;
+    --shadow-sm:0 2px 6px rgba(30,20,10,0.06);
+    --shadow-md:0 10px 24px -8px rgba(30,20,10,0.16);
+    --shadow-lg:0 28px 60px -18px rgba(30,20,10,0.24);
+    --glow-accent:rgba(194,65,12,0.14);
+    --glow-accent-2:rgba(15,118,110,0.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#100f0d; --bg-alt:#17150f; --bg-raised:#1b1811;
+      --ink:#f3f1ea; --ink-dim:#a9a69a;
+      --accent:#ff6a3d; --accent-soft:#ffab84; --accent-ink:#1a0e08;
+      --accent-2:#5eead4;
+      --border:rgba(243,241,234,0.14); --border-strong:rgba(243,241,234,0.3);
+      --green:#34d399; --green-ink:#062e21;
+      --amber:#f4b860; --amber-ink:#3a2205;
+      --red:#ff8a75; --red-ink:#3a0906;
+      --gray:#9a958c; --gray-ink:#171512;
+      --vc-panel-bg:#123420; --vc-panel-border:rgba(52,211,153,0.35); --vc-btn:#34d399; --vc-btn-ink:#062e21;
+      --shadow-sm:0 2px 6px rgba(0,0,0,0.35);
+      --shadow-md:0 14px 30px -8px rgba(0,0,0,0.5);
+      --shadow-lg:0 32px 70px -18px rgba(0,0,0,0.6);
+      --glow-accent:rgba(255,106,61,0.22); --glow-accent-2:rgba(94,234,212,0.18);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#100f0d; --bg-alt:#17150f; --bg-raised:#1b1811;
+    --ink:#f3f1ea; --ink-dim:#a9a69a;
+    --accent:#ff6a3d; --accent-soft:#ffab84; --accent-ink:#1a0e08;
+    --accent-2:#5eead4;
+    --border:rgba(243,241,234,0.14); --border-strong:rgba(243,241,234,0.3);
+    --green:#34d399; --green-ink:#062e21;
+    --amber:#f4b860; --amber-ink:#3a2205;
+    --red:#ff8a75; --red-ink:#3a0906;
+    --gray:#9a958c; --gray-ink:#171512;
+    --vc-panel-bg:#123420; --vc-panel-border:rgba(52,211,153,0.35); --vc-btn:#34d399; --vc-btn-ink:#062e21;
+    --shadow-sm:0 2px 6px rgba(0,0,0,0.35);
+    --shadow-md:0 14px 30px -8px rgba(0,0,0,0.5);
+    --shadow-lg:0 32px 70px -18px rgba(0,0,0,0.6);
+    --glow-accent:rgba(255,106,61,0.22); --glow-accent-2:rgba(94,234,212,0.18);
   }
 
-  let targetUrl = (body.url || '').trim();
-  if (!targetUrl) return json({ error: 'No URL provided' }, 400);
-  if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  @media (prefers-reduced-motion: no-preference){ html{scroll-behavior:smooth;} }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    padding:0 20px;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  .narrow{max-width:1040px;margin:0 auto;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  .eyebrow{
+    font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;
+  }
+  h1,h2,h3{letter-spacing:-.01em;line-height:1.08;text-wrap:balance;margin:0;font-weight:800;}
+  h1{font-family:'Big Shoulders Display', 'Arial Narrow', sans-serif;font-weight:900;letter-spacing:0;line-height:.98;text-transform:uppercase;}
 
-  let parsed;
-  try {
-    parsed = new URL(targetUrl);
-  } catch (e) {
-    return json({ error: 'That doesn’t look like a valid website address' }, 400);
+  /* ---------- header ---------- */
+  header.site{
+    position:sticky;top:0;z-index:40;
+    padding-block:14px;
+    background:var(--bg-raised);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-row{
+    max-width:1180px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+  }
+  .wordmark{
+    font-family:'Big Shoulders Display', sans-serif;font-weight:800;font-size:18px;
+    text-transform:uppercase;text-decoration:none;
+    display:flex;align-items:baseline;gap:.4em;flex:none;
+  }
+  .wordmark .strike{text-decoration:line-through;text-decoration-color:var(--accent);text-decoration-thickness:3px;color:var(--ink-dim);}
+  nav.links{display:flex;gap:22px;align-items:center;}
+  .nav-text-links{display:flex;gap:22px;align-items:center;}
+  .nav-text-links a{font-size:14px;font-weight:600;text-decoration:none;color:var(--ink-dim);}
+  .nav-text-links a:hover{color:var(--ink);}
+  @media (max-width:760px){ .nav-text-links{display:none;} }
+
+  .btn{
+    font-size:14.5px;font-weight:700;
+    background:var(--accent);color:var(--accent-ink);
+    border:none;padding:13px 22px;border-radius:10px;cursor:pointer;
+    text-decoration:none;display:inline-flex;align-items:center;gap:.55em;
+    box-shadow:var(--shadow-md);min-height:44px;
+    transition:transform .16s ease, box-shadow .16s ease, filter .16s ease;
+  }
+  .btn:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+  .btn:active{transform:translateY(0);}
+  .btn .arrow{display:inline-block;transition:transform .18s ease;}
+  .btn:hover .arrow{transform:translateX(4px);}
+  .btn:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible{
+    outline:2px solid var(--accent-2);outline-offset:2px;
+  }
+  .btn-ghost{background:var(--bg-raised);color:var(--ink);border:1px solid var(--border-strong);box-shadow:var(--shadow-sm);}
+  .btn-ghost:hover{box-shadow:var(--shadow-md);}
+  .btn-sm{padding:11px 16px;font-size:13.5px;border-radius:9px;min-height:40px;}
+  .btn-nav{padding:10px 18px;font-size:13.5px;border-radius:9px;min-height:40px;}
+  @media (prefers-reduced-motion: reduce){
+    .btn, .btn .arrow{transition:none;}
+    .btn:hover{transform:none;}
   }
 
-  const origin = parsed.origin;
-
-  // Fetch the page itself (this is the one fetch we really need).
-  let html = '';
-  let fetchOk = false;
-  try {
-    const pageRes = await fetchWithTimeout(targetUrl, 9000);
-    fetchOk = pageRes.ok;
-    if (pageRes.ok) html = await pageRes.text();
-  } catch (e) {
-    // fall through — fetchOk stays false, we still return a (limited) result
+  .field-input{
+    border:1px solid var(--border-strong);border-radius:10px;
+    background:var(--bg);font-family:inherit;font-size:15px;color:var(--ink);
+    padding:13px 14px;min-height:44px;width:100%;
   }
 
-  if (!fetchOk) {
-    return json({
-      error: 'Could not load that website',
-      message: 'We couldn’t reach ' + parsed.hostname + '. Double-check the address and that the site is live.',
-      real: true,
-    }, 200);
+  /* ---------- hero ---------- */
+  .hero{position:relative;padding-block:44px 0;overflow:hidden;}
+  .hero-glow{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0;}
+  .hero-glow.a{width:440px;height:440px;background:var(--glow-accent);top:-160px;right:-120px;}
+  .hero-glow.b{width:340px;height:340px;background:var(--glow-accent-2);bottom:-170px;left:-140px;}
+  .hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr 0.9fr;gap:36px;align-items:center;}
+  @media (max-width:860px){ .hero-grid{grid-template-columns:1fr;} }
+  .hero-copy{display:grid;gap:16px;}
+  .hero h1{font-size:clamp(36px,5.2vw,62px);}
+  .hero .lede{font-size:18px;color:var(--ink-dim);max-width:50ch;}
+  .hero-check-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
+  .hero-check-row input{flex:1;min-width:180px;}
+  .hero-note{font-size:12.5px;color:var(--ink-dim);}
+  .check-basics-note{font-size:14px;color:var(--ink);margin:14px 0 4px;max-width:52ch;}
+  .check-basics-note strong{display:block;font-size:15px;margin-bottom:2px;}
+  .check-scope-note{font-size:12px;color:var(--ink-dim);margin:0 0 12px;max-width:52ch;}
+  .see-example-link{font-size:13.5px;font-weight:600;color:var(--accent-2);text-decoration:none;}
+  .see-example-link:hover{text-decoration:underline;}
+  @media (max-width:860px){ .see-example-link{display:none;} }
+
+  .hero-visual{position:relative;height:min(70vh, 620px);display:none;align-items:center;justify-content:center;container-type:inline-size;}
+  @media (min-width:861px){ .hero-visual{display:flex;} }
+  .stack-shadow{
+    position:absolute;width:46%;height:29%;min-width:230px;min-height:140px;max-width:460px;max-height:280px;border-radius:50%;
+    background:radial-gradient(ellipse, color-mix(in srgb, var(--ink) 38%, transparent), transparent 70%);
+    filter:blur(38px);transform:translate(3%,26%);z-index:0;pointer-events:none;
+  }
+  .stack-card{position:absolute;border-radius:22px;}
+  .stack-back{width:60%;height:50%;min-width:240px;min-height:200px;max-width:500px;max-height:410px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);transform:rotate(-9deg) translate(-15%,10%);opacity:.7;}
+  .stack-mid{width:60%;height:50%;min-width:240px;min-height:200px;max-width:500px;max-height:410px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);transform:rotate(6deg) translate(15%,-4%);opacity:.85;}
+  .stack-front{width:68%;min-width:280px;max-width:560px;background:var(--bg-raised);box-shadow:0 40px 90px -20px color-mix(in srgb, var(--ink) 42%, transparent), var(--shadow-lg);transform:rotate(-2deg);overflow:hidden;}
+  .stack-front .strip{height:clamp(9px, 3cqi, 16px);background:linear-gradient(90deg, var(--accent), var(--accent-2));}
+  .stack-front .body{padding:clamp(19px, 6cqi, 36px) clamp(21px, 6.5cqi, 40px) clamp(21px, 6.5cqi, 40px);}
+  .stack-front .title{font-size:clamp(13px, 3.8cqi, 23px);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:clamp(13px, 4cqi, 25px);}
+  .stack-front .row{display:flex;align-items:center;gap:clamp(11px, 3.6cqi, 20px);padding:clamp(6px, 2.2cqi, 12px) 0;font-size:clamp(14.5px, 4.4cqi, 27px);color:var(--ink);}
+  .stack-front .row .dot{width:clamp(12px, 3.8cqi, 23px);height:clamp(12px, 3.8cqi, 23px);border-radius:50%;flex:none;}
+  .stack-front .foot{margin-top:clamp(11px, 3.6cqi, 20px);font-size:clamp(11px, 3.5cqi, 21px);color:var(--ink-dim);}
+  @supports not (container-type: inline-size){
+    .stack-front .strip{height:14px;} .stack-front .body{padding:26px 30px 30px;}
+    .stack-front .title{font-size:19px;margin-bottom:20px;} .stack-front .row{gap:16px;padding:10px 0;font-size:22px;}
+    .stack-front .row .dot{width:19px;height:19px;} .stack-front .foot{margin-top:16px;font-size:17px;}
   }
 
-  // Secondary fetches — best-effort, never block the result on these.
-  const [robotsRes, sitemapRes, llmsRes] = await Promise.all([
-    fetchWithTimeout(origin + '/robots.txt', 5000).catch(() => null),
-    fetchWithTimeout(origin + '/sitemap.xml', 5000).catch(() => null),
-    fetchWithTimeout(origin + '/llms.txt', 5000).catch(() => null),
-  ]);
+  /* hero result panel */
+  .hero-result{margin-top:32px;position:relative;z-index:1;}
+  .panel{border:1px solid var(--border);border-radius:16px;background:var(--bg-raised);box-shadow:var(--shadow-md);overflow:hidden;}
+  .result-summary{display:flex;align-items:center;gap:16px;padding:22px 24px 8px;flex-wrap:wrap;}
+  .result-summary .rs-title{font-weight:800;font-size:16px;}
+  .result-summary .rs-sub{font-size:13px;color:var(--ink-dim);}
+  .check-footnote{padding:6px 24px 20px;font-size:12px;color:var(--ink-dim);}
+  .mini-capture{padding:18px 24px 24px;border-top:1px solid var(--border);display:grid;gap:12px;}
+  .mc-hook{font-size:21px;font-weight:800;line-height:1.16;letter-spacing:-.01em;margin:0 0 2px;color:var(--ink);}
+  @media (min-width:600px){ .mc-hook{font-size:25px;} }
+  .mini-capture .cap-row{display:flex;gap:12px;flex-wrap:wrap;}
+  .mini-capture input{flex:1;min-width:160px;}
+  .mini-status{font-size:12.5px;color:var(--accent-2);min-height:1.2em;}
 
-  const signals = analyzeHtml(html, origin);
-  signals.https = parsed.protocol === 'https:';
-  signals.robotsPresent = !!(robotsRes && robotsRes.ok);
-  signals.sitemapPresent = !!(sitemapRes && sitemapRes.ok);
-  signals.llmsTxtPresent = !!(llmsRes && llmsRes.ok);
+  .dot{width:13px;height:13px;border-radius:50%;flex:none;}
+  .dot.green{background:var(--green);}
+  .dot.amber{background:var(--amber);animation:dot-pulse-amber 2s ease-in-out infinite;}
+  .dot.red{background:var(--red);animation:dot-pulse-red 1.2s ease-in-out infinite;}
+  .dot.gray{background:var(--gray);}
 
-  // Optional: real page-speed / mobile data.
-  let pageSpeed = null;
-  if (env.PAGESPEED_API_KEY) {
-    pageSpeed = await fetchPageSpeed(targetUrl, env.PAGESPEED_API_KEY).catch(() => null);
+  /* Text label + accessible icon shown alongside every dot, not colour alone. */
+  .status-text{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;letter-spacing:.02em;margin-left:8px;}
+  .status-text.green{color:var(--green);}
+  .status-text.amber{color:var(--amber);}
+  .status-text.red{color:var(--red);}
+  .status-text.gray{color:var(--gray);}
+  .status-text .status-icon{font-size:12px;line-height:1;}
+
+  .check-date{font-size:12.5px;color:var(--ink-dim);margin:2px 0 0;}
+  .next-step{margin:4px 24px 20px;padding:14px 16px;border-radius:10px;background:var(--bg-alt);border:1px solid var(--border);}
+  .next-step .ns-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);margin-bottom:4px;}
+  .next-step .ns-text{font-size:14px;color:var(--ink);}
+  @keyframes dot-pulse-amber{
+    0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb, var(--amber) 45%, transparent);}
+    50%{transform:scale(1.5);box-shadow:0 0 0 5px color-mix(in srgb, var(--amber) 0%, transparent);}
   }
-
-  // Optional: one AI-written sentence on AI-search readiness.
-  let aiNote = null;
-  if (env.ANTHROPIC_API_KEY) {
-    aiNote = await scoreWithClaude(html, parsed.hostname, env.ANTHROPIC_API_KEY).catch(() => null);
+  @keyframes dot-pulse-red{
+    0%,100%{transform:scale(1);box-shadow:0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent);}
+    50%{transform:scale(1.6);box-shadow:0 0 0 7px color-mix(in srgb, var(--red) 0%, transparent);}
   }
-
-  const result = buildResult(signals, pageSpeed, aiNote, parsed.hostname);
-  return json(result, 200);
-}
-
-// ---------- helpers ----------
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-}
-
-function json(obj, status) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-  });
-}
-
-async function fetchWithTimeout(url, ms, options) {
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-      headers: { 'User-Agent': 'DontFixYourSEO-Checker/1.0 (+https://dontfixyourseo.com)', ...(options && options.headers) },
-    });
-  } finally {
-    clearTimeout(t);
+  @media (prefers-reduced-motion: reduce){
+    .dot.amber, .dot.red{animation:none;}
   }
-}
+  .status-word{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:6px;flex:none;}
+  .status-word.green{color:var(--green);background:color-mix(in srgb, var(--green) 14%, transparent);}
+  .status-word.amber{color:var(--amber);background:color-mix(in srgb, var(--amber) 14%, transparent);}
+  .status-word.red{color:var(--red);background:color-mix(in srgb, var(--red) 14%, transparent);}
+  .status-word.gray{color:var(--gray);background:color-mix(in srgb, var(--gray) 14%, transparent);}
+  .badge-circle{width:60px;height:60px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;box-shadow:var(--shadow-md);}
+  .badge-circle.green{background:var(--green);color:var(--green-ink);}
+  .badge-circle.amber{background:var(--amber);color:var(--amber-ink);}
+  .badge-circle.red{background:var(--red);color:var(--red-ink);}
+  .badge-circle.gray{background:var(--gray);color:var(--gray-ink);}
 
-// Recognised same-site route slugs for a dedicated contact/enquiry page.
-// Matched against the LAST path segment only (so /contact, /en/contact,
-// /pages/contact-us.html, etc. all match) — deliberately NOT matched against
-// arbitrary substrings of the path or against surrounding page text, so an
-// unrelated page merely mentioning "contact" or "support" cannot qualify.
-const CONTACT_PATH_SLUGS = new Set([
-  'contact', 'contact-us', 'contactus', 'contact_us',
-  'support',
-  'get-in-touch', 'getintouch', 'get_in_touch',
-  'enquire', 'enquiry', 'enquiries', 'inquire', 'inquiry', 'inquiries',
-  'book', 'booking',
-  'consultation', 'consultations',
-  'request-a-quote', 'requestaquote', 'request_a_quote',
-]);
-
-// Does this page link to a dedicated contact/enquiry page on the SAME site?
-// e.g. <a href="/contact">Contact & Support</a> on the homepage.
-//
-// This is deliberately conservative and link-based only (no surrounding-text
-// matching, no substring matching): a genuine <a href> is required, it must
-// resolve (relative or absolute) to the site's own origin, and its final
-// path segment must be an exact match against CONTACT_PATH_SLUGS. That's
-// enough to recognise normal contact-page architecture without being fooled
-// by "#" placeholders, javascript: handlers, or ordinary copy that merely
-// mentions the word "contact"/"support" near an unrelated link.
-export function hasInternalContactLink(html, origin) {
-  if (!origin) return false;
-
-  let originHost;
-  try {
-    originHost = new URL(origin).hostname.toLowerCase();
-  } catch (e) {
-    return false;
+  /* Visible Companies panel — sits after the findings and next step. Pale
+     green, restrained corners, comfortable spacing; one clearly-primary
+     button, the rest as plain text links so nothing competes with it. */
+  .vc-panel{
+    margin:18px 24px 24px;padding:20px 20px 22px;border-radius:14px;
+    background:var(--vc-panel-bg);border:1px solid var(--vc-panel-border);color:var(--ink);
   }
+  .vc-panel .vc-eyebrow{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-dim);}
+  .vc-panel h3{font-size:19px;font-weight:800;margin:4px 0 10px;color:var(--ink);}
+  .vc-panel p{font-size:14px;line-height:1.55;color:var(--ink);margin:0 0 12px;max-width:62ch;}
+  .vc-panel .vc-founder{font-size:13.5px;line-height:1.55;color:var(--ink-dim);margin:0 0 14px;max-width:62ch;}
+  .vc-services{display:grid;gap:10px;margin:6px 0 16px;}
+  @media (min-width:640px){ .vc-services{grid-template-columns:repeat(3,1fr);} }
+  .vc-service{
+    background:var(--bg-raised);border:1px solid var(--border);border-radius:10px;padding:12px 14px;
+  }
+  .vc-service .vc-service-name{font-weight:800;font-size:13.5px;color:var(--ink);}
+  .vc-service .vc-service-price{font-weight:800;font-size:13.5px;color:var(--vc-btn);margin-left:4px;}
+  .vc-service .vc-service-desc{font-size:12.5px;color:var(--ink-dim);margin-top:3px;line-height:1.4;}
+  .vc-panel .vc-rebuild-note{font-size:12.5px;color:var(--ink-dim);margin:-4px 0 14px;}
+  .vc-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:10px;}
+  .vc-btn-primary{
+    display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:10px;
+    background:var(--vc-btn);color:var(--vc-btn-ink);font-weight:800;font-size:14.5px;
+    text-decoration:none;box-shadow:var(--shadow-sm);min-height:44px;
+  }
+  .vc-btn-primary:hover{filter:brightness(1.06);}
+  .vc-links{display:flex;flex-wrap:wrap;gap:6px 16px;}
+  .vc-links a{font-size:13px;font-weight:600;color:var(--vc-btn);text-decoration:underline;text-underline-offset:2px;}
+  .vc-panel .vc-qualifier{font-size:11.5px;color:var(--ink-dim);margin-top:12px;margin-bottom:0;}
 
-  const anchorRe = /<a\b[^>]*\bhref\s*=\s*["']([^"']*)["'][^>]*>/gi;
-  let m;
-  while ((m = anchorRe.exec(html))) {
-    const rawHref = (m[1] || '').trim();
-    if (!rawHref || rawHref.startsWith('#')) continue; // no destination / same-page anchor
-    if (/^(javascript|mailto|tel):/i.test(rawHref)) continue; // handled separately, or not navigable
+  .check-row{display:flex;align-items:center;gap:14px;padding:15px 24px;border-bottom:1px solid var(--border);}
+  .check-row:last-child{border-bottom:none;}
+  .check-row .label{flex:1;font-size:15px;font-weight:600;color:var(--ink);}
+  .check-row .note{display:block;font-weight:400;font-size:13.5px;color:var(--ink-dim);margin-top:2px;}
 
-    let resolved;
+  /* ---------- sections ---------- */
+  section{padding-block:56px;}
+  .band{background:var(--bg-alt);}
+  section > .eyebrow{display:block;margin-bottom:10px;}
+  section h2{font-size:clamp(26px,3.4vw,38px);margin-bottom:14px;}
+  .section-lede{color:var(--ink-dim);max-width:60ch;margin-bottom:28px;font-size:16px;}
+
+  /* icons */
+  .icon-tile{
+    width:44px;height:44px;border-radius:11px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--accent) 12%, transparent);
+    color:var(--accent);margin-bottom:14px;
+  }
+  .icon-tile.mint{background:color-mix(in srgb, var(--accent-2) 14%, transparent);color:var(--accent-2);}
+  .icon-tile svg{width:22px;height:22px;}
+
+  /* areas */
+  .areas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  .area{padding:22px 20px;border-radius:14px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);transition:box-shadow .15s ease, transform .15s ease;}
+  .area:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+  .area h3{font-size:16.5px;margin-bottom:6px;letter-spacing:0;}
+  .area p{margin:0;color:var(--ink-dim);font-size:13.5px;line-height:1.45;}
+  @media (max-width:900px){ .areas-grid{grid-template-columns:1fr 1fr;} .area p{font-size:13px;} }
+  @media (max-width:480px){ .areas-grid{gap:12px;} .area{padding:16px 14px;} .icon-tile{width:36px;height:36px;border-radius:9px;margin-bottom:10px;} .icon-tile svg{width:18px;height:18px;} .area h3{font-size:14.5px;} }
+  @media (prefers-reduced-motion: reduce){ .area{transition:none;} .area:hover{transform:none;} }
+
+  /* example / progressive disclosure */
+  .example-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 24px;}
+  .example-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .example-chip{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-dim);}
+  details.example-toggle{border-top:1px solid var(--border);}
+  details.example-toggle summary{
+    cursor:pointer;list-style:none;padding:16px 24px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-weight:700;font-size:14.5px;min-height:44px;
+  }
+  details.example-toggle summary::-webkit-details-marker{display:none;}
+  details.example-toggle summary .chev{transition:transform .2s ease;color:var(--accent);}
+  details.example-toggle[open] summary .chev{transform:rotate(180deg);}
+  .accordion-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease;}
+  details[open] .accordion-body{grid-template-rows:1fr;}
+  .accordion-inner{overflow:hidden;min-height:0;}
+  @media (prefers-reduced-motion: reduce){ .accordion-body, details.example-toggle summary .chev, .faq-item summary .chev{transition:none;} }
+  .case-meta{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 24px;border-top:1px solid var(--border);background:var(--bg);}
+  .case-link{font-size:12.5px;color:var(--ink-dim);margin-top:14px;}
+  .case-link a{color:var(--accent-2);text-decoration:underline;}
+
+  /* process */
+  .process-mobile{display:grid;gap:14px;}
+  @media (min-width:760px){ .process-mobile{display:none;} }
+  .process-desktop{display:none;}
+  @media (min-width:760px){ .process-desktop{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;} }
+  .step-card{display:flex;gap:16px;align-items:flex-start;padding:20px;border-radius:14px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+  .step-card .icon-tile{margin-bottom:0;}
+  .step-card h3{font-size:15.5px;margin-bottom:4px;letter-spacing:0;}
+  .step-card p{margin:0;color:var(--ink-dim);font-size:13.5px;}
+  .receive-item{padding:22px 20px;border-radius:14px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+  .receive-item .num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:12px;margin-bottom:10px;}
+  .receive-item h3{font-size:15.5px;margin-bottom:6px;letter-spacing:0;}
+  .receive-item p{margin:0;color:var(--ink-dim);font-size:13.5px;}
+  .services-note{margin-top:20px;padding:20px 22px;border-radius:14px;background:var(--bg-raised);border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+  .services-note p{margin:0;color:var(--ink-dim);font-size:14.5px;}
+
+  /* trust / Tony */
+  .trust-panel{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;padding:30px;}
+  @media (max-width:600px){ .trust-panel{grid-template-columns:1fr;text-align:left;} }
+  .avatar{
+    width:84px;height:84px;border-radius:50%;flex:none;
+    background:linear-gradient(155deg, var(--accent), var(--accent-2));
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-family:'Big Shoulders Display',sans-serif;font-size:32px;font-weight:800;
+    box-shadow:var(--shadow-md);
+    overflow:hidden;
+  }
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .trust-name{font-size:19px;font-weight:800;margin-bottom:2px;}
+  .trust-role{font-size:13px;color:var(--ink-dim);margin-bottom:14px;}
+  .trust-intro{font-size:15.5px;color:var(--ink);max-width:60ch;margin-bottom:18px;}
+  .trust-contact{font-size:14.5px;color:var(--ink-dim);margin:-6px 0 18px;}
+  .trust-contact a{color:var(--accent-2);font-weight:700;text-decoration:none;}
+  .trust-contact a:hover{text-decoration:underline;}
+  .trust-quote{
+    padding:16px 18px;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
+    background:var(--bg);font-size:14.5px;color:var(--ink-dim);font-style:italic;
+  }
+  .trust-quote cite{display:block;margin-top:8px;font-style:normal;font-size:12.5px;font-weight:700;color:var(--ink-dim);}
+
+  /* faq */
+  .faq-item{border-bottom:1px solid var(--border);}
+  .faq-item summary{
+    cursor:pointer;font-weight:700;font-size:16px;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:18px 0;min-height:44px;
+  }
+  .faq-item summary::-webkit-details-marker{display:none;}
+  .faq-item summary .chev{color:var(--accent);font-size:20px;flex:none;transition:transform .2s ease;}
+  .faq-item[open] summary .chev{transform:rotate(45deg);}
+  .faq-item .accordion-inner{padding-bottom:16px;}
+  .faq-item p{color:var(--ink-dim);margin:0;max-width:62ch;font-size:15px;}
+  @media (prefers-reduced-motion: reduce){ .faq-item summary .chev{transition:none;} }
+
+  /* final cta — fixed dark band, independent of theme */
+  #final-cta{
+    background:linear-gradient(160deg,#101a2e,#1c2b47);
+    color:#f4f6fb;
+    text-align:center;
+    padding-block:64px;
+  }
+  #final-cta h2{color:#ffffff;margin-bottom:12px;font-size:clamp(26px,3.6vw,40px);}
+  #final-cta .lede{color:#c7cfdd;font-size:17px;max-width:52ch;margin:0 auto 26px;}
+  .final-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:520px;margin:0 auto;}
+  .final-cta-row input{
+    flex:1;min-width:200px;border:1px solid rgba(255,255,255,0.18);border-radius:10px;
+    background:rgba(255,255,255,0.08);color:#ffffff;font-family:inherit;font-size:15px;padding:13px 14px;min-height:44px;
+  }
+  .final-cta-row input::placeholder{color:#9aa5ba;}
+  #final-cta .hero-note{color:#9aa5ba;margin-top:14px;font-size:12.5px;}
+
+  footer.site{padding-block:32px 90px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;border-top:1px solid var(--border);}
+  footer.site span{font-size:12.5px;color:var(--ink-dim);}
+  @media (min-width:760px){ footer.site{padding-block:32px 44px;} }
+
+  /* mobile sticky cta */
+  .sticky-cta{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    display:flex;align-items:center;gap:10px;
+    padding:10px 14px;
+    padding-bottom:max(10px, env(safe-area-inset-bottom));
+    background:var(--bg-raised);
+    border-top:1px solid var(--border-strong);
+    box-shadow:0 -8px 24px rgba(0,0,0,0.12);
+    transform:translateY(0);
+    transition:transform .25s ease;
+  }
+  .sticky-cta.hidden{transform:translateY(120%);}
+  .sticky-cta .btn{flex:1;justify-content:center;}
+  .sticky-cta .dismiss{
+    flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--border-strong);
+    background:var(--bg);color:var(--ink-dim);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:16px;
+  }
+  @media (min-width:760px){ .sticky-cta{display:none;} }
+  @media (prefers-reduced-motion: reduce){ .sticky-cta{transition:none;} }
+</style>
+</head>
+<body>
+<header class="site">
+  <div class="nav-row">
+    <a class="wordmark" href="#top">DON'T <span class="strike">FIX</span> YOUR SEO</a>
+    <nav class="links">
+      <span class="nav-text-links">
+        <a href="#process">How it works</a>
+        <a href="#areas">What we check</a>
+        <a href="#example">Example report</a>
+        <a href="#trust">About</a>
+      </span>
+      <a class="btn btn-nav" href="#hero-input" id="nav-cta">Check My Website</a>
+    </nav>
+  </div>
+</header>
+
+<div id="top">
+  <section class="hero">
+    <div class="hero-glow a"></div>
+    <div class="hero-glow b"></div>
+    <div class="wrap">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">For local business owners</span>
+          <h1>Don't Fix<br>Your SEO.</h1>
+          <p class="lede">
+            Find out what's actually stopping customers from finding, trusting or contacting your business —
+            before you pay to fix the wrong thing.
+          </p>
+          <div class="hero-check-row" id="hero-input">
+            <label for="site-url" class="sr-only">Your website address</label>
+            <input class="field-input" id="site-url" type="text" placeholder="yourbusiness.co.uk" />
+            <button class="btn" id="run-check" type="button">Check My Website <span class="arrow">→</span></button>
+          </div>
+          <span class="hero-note">Free initial check · Plain English · No obligation</span>
+          <p class="check-basics-note">
+            <strong>Check the basics before paying for changes.</strong>
+            Get a free automated homepage check covering discoverability, clarity, business information and contact options.
+          </p>
+          <p class="check-scope-note">This checks selected homepage signals. It is not a full website audit and does not establish whether AI assistants recommend your business.</p>
+          <div><a class="see-example-link" href="#example">See a real example ↓</a></div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="stack-shadow"></div>
+          <div class="stack-card stack-back"></div>
+          <div class="stack-card stack-mid"></div>
+          <div class="stack-card stack-front">
+            <div class="strip"></div>
+            <div class="body">
+              <div class="title">Your website check</div>
+              <div class="row"><span class="dot green"></span>Found easily</div>
+              <div class="row"><span class="dot green"></span>Clearly understood</div>
+              <div class="row"><span class="dot amber"></span>Trusted — mostly</div>
+              <div class="row"><span class="dot green"></span>Easy to contact</div>
+              <div class="foot">Full check takes about a minute</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-result">
+        <div class="panel" id="hero-result-panel" hidden>
+          <div class="result-summary">
+            <div class="badge-circle" id="result-badge">✓</div>
+            <div>
+              <div class="rs-title" id="result-title">Good foundations, a couple of quick wins</div>
+              <div class="rs-sub" id="result-sub">for yourbusiness.co.uk</div>
+              <div class="check-date" id="result-date"></div>
+            </div>
+          </div>
+          <p class="check-scope-note" id="result-scope-note" style="margin-top:2px;">This is a snapshot of four basics only. Even when most checks here pass, a fuller audit can often find more to improve — see Visible Companies below.</p>
+          <div id="result-rows">
+            <div class="check-row"><span class="dot" id="dot-1"></span><span class="label">Can customers find you?<span class="status-text" id="status-1"></span><span class="note" id="note-1"></span></span></div>
+            <div class="check-row"><span class="dot" id="dot-2"></span><span class="label">Do customers understand you?<span class="status-text" id="status-2"></span><span class="note" id="note-2"></span></span></div>
+            <div class="check-row"><span class="dot" id="dot-3"></span><span class="label">Do customers trust you?<span class="status-text" id="status-3"></span><span class="note" id="note-3"></span></span></div>
+            <div class="check-row"><span class="dot" id="dot-4"></span><span class="label">Can customers take action?<span class="status-text" id="status-4"></span><span class="note" id="note-4"></span></span></div>
+          </div>
+          <p class="check-footnote" id="check-footnote">Illustrative preview, not a live scan of the address above. Your real report checks the actual site.</p>
+          <div class="next-step" id="next-step-block" hidden>
+            <div class="ns-label">Your next step</div>
+            <div class="ns-text" id="next-step-text"></div>
+          </div>
+          <div class="mini-capture">
+            <p class="mc-hook">Your full report names the exact 3 problems — and the 3 fixes, in order.</p>
+            <!-- Genuine semantic <form>: a real HTML form element wrapping the
+                 existing enquiry fields, so the enquiry mechanism is detectable
+                 in the raw page markup (not just after JavaScript runs). The
+                 action/method below is a real, working no-JS fallback that
+                 posts to the same Formspree endpoint the JS path already uses
+                 — nothing about the destination changes. When JavaScript is
+                 available (the normal case), the submit handler below calls
+                 preventDefault() and runs the exact same fetch-based flow as
+                 before; this form tag changes nothing about that behaviour. -->
+            <form id="mc-form" action="https://formspree.io/f/mwlkgbnn" method="POST">
+              <div class="cap-row">
+                <label for="mc-name" class="sr-only">Name</label>
+                <input class="field-input" id="mc-name" name="name" type="text" placeholder="Name" />
+                <label for="mc-email" class="sr-only">Email</label>
+                <input class="field-input" id="mc-email" name="email" type="email" placeholder="Email" />
+                <input type="hidden" id="mc-site-hidden" name="website" value="" />
+              </div>
+              <div class="cap-row" style="align-items:center;">
+                <button class="btn btn-sm" id="mc-submit" type="submit">Show me the 3 fixes <span class="arrow">→</span></button>
+                <span class="mini-status" id="mini-status"></span>
+              </div>
+            </form>
+          </div>
+          <div class="vc-panel">
+            <div class="vc-eyebrow">You've checked the basics. Want a closer look?</div>
+            <h3>Practical help from a fellow business owner</h3>
+            <p>Your free DontFixYourSEO report checks selected website basics. Visible Companies offers a deeper, personally reviewed assessment of your business's visibility in AI search.</p>
+            <p class="vc-founder">Visible Companies is run by Lee Kelly. Together with his business partner Tony Posgate, Lee has built Home Design Products Ltd, Home Design Properties Ltd and Revive My Kitchen, their kitchen makeover business. Through running their own businesses, they recognised that their marketing and websites needed to evolve as customers' search habits changed — including the growing use of AI assistants. That experience helped shape Lee's approach to Visible Companies: explain what the checks show, identify practical improvements and help business owners decide what to do next.</p>
+            <p>Paid audits include checks using relevant customer questions across ChatGPT, Perplexity, Gemini and Google AI Overviews. Lee personally reviews each report before delivery.</p>
+
+            <div class="vc-eyebrow" style="margin-top:4px;">Choose the help you need</div>
+            <div class="vc-services">
+              <div class="vc-service">
+                <span class="vc-service-name">AI Visibility Snapshot</span><span class="vc-service-price">£29.95</span>
+                <div class="vc-service-desc">A concise overview of your visibility and the main findings.</div>
+              </div>
+              <div class="vc-service">
+                <span class="vc-service-name">AI Visibility Deep Dive</span><span class="vc-service-price">£395</span>
+                <div class="vc-service-desc">Detailed technical checks, competitor comparison and a prioritised action plan.</div>
+              </div>
+              <div class="vc-service">
+                <span class="vc-service-name">Schema &amp; Citation Pack</span><span class="vc-service-price">£149 add-on</span>
+                <div class="vc-service-desc">Prepared website code, a business-listing checklist and installation instructions.</div>
+              </div>
+            </div>
+            <p class="vc-rebuild-note">Website rebuilds and ongoing care are also available where appropriate. Confirm implementation scope and price before ordering.</p>
+
+            <div class="vc-actions">
+              <a class="vc-btn-primary" href="https://visiblecompanies.co.uk/pricing/" target="_blank" rel="noopener">Explore services and pricing <span class="arrow">→</span></a>
+              <div class="vc-links">
+                <a href="https://visiblecompanies.co.uk/how-it-works/" target="_blank" rel="noopener">How the audit works</a>
+                <a href="https://visiblecompanies.co.uk/about/" target="_blank" rel="noopener">Meet Lee</a>
+                <a href="https://visiblecompanies.co.uk/contact/" target="_blank" rel="noopener">Not sure which service? Ask Lee</a>
+              </div>
+            </div>
+            <p class="vc-qualifier">No service can guarantee a recommendation or mention in AI-generated answers.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="areas" class="band">
+    <div class="wrap">
+      <span class="eyebrow">What the check covers</span>
+      <h2>Four plain questions. Nothing technical.</h2>
+      <p class="section-lede">No jargon, no hundreds of technical checks — just what actually turns visitors into enquiries.</p>
+      <div class="areas-grid">
+        <div class="area">
+          <div class="icon-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg></div>
+          <h3>Can they find you?</h3>
+          <p>Google, local search, your Business Profile, and basic AI-search visibility.</p>
+        </div>
+        <div class="area">
+          <div class="icon-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v10.5H9l-4 3.5V5z"></path></svg></div>
+          <h3>Do they understand you?</h3>
+          <p>Clear at a glance what you do, where you cover, and why to choose you.</p>
+        </div>
+        <div class="area">
+          <div class="icon-tile mint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.6-3 7.6-7 9-4-1.4-7-4.4-7-9V6l7-3z"></path><path d="M9 12l2 2 4-4"></path></svg></div>
+          <h3>Do they trust you?</h3>
+          <p>Reviews, real photos, clear details, and a professional-looking site.</p>
+        </div>
+        <div class="area">
+          <div class="icon-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 4v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"></path><line x1="9" y1="17" x2="13" y2="17"></line></svg></div>
+          <h3>Can they take action?</h3>
+          <p>A clickable number, a simple enquiry, mobile-friendly, and fast pages.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="example">
+    <div class="wrap">
+      <span class="eyebrow">A real example, not a mock-up</span>
+      <h2>We checked our own business first.</h2>
+      <p class="section-lede">
+        Home Design Products runs kitchen, bedroom, bathroom and media wall showrooms in South Shields — a genuine
+        5.0-star rating across 21 Google reviews. Here's what our own check found.
+      </p>
+      <div class="panel">
+        <div class="example-summary">
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div class="badge-circle amber">!</div>
+            <div>
+              <div style="font-weight:800;font-size:16px;">2 quick wins identified</div>
+              <div style="font-size:12.5px;color:var(--ink-dim);">Good foundations overall</div>
+            </div>
+          </div>
+          <div class="example-chips">
+            <span class="example-chip"><span class="dot amber"></span>Find</span>
+            <span class="example-chip"><span class="dot green"></span>Understand</span>
+            <span class="example-chip"><span class="dot amber"></span>Trust</span>
+            <span class="example-chip"><span class="dot green"></span>Act</span>
+          </div>
+        </div>
+        <details class="example-toggle">
+          <summary>View example results <span class="chev">⌄</span></summary>
+          <div class="accordion-body"><div class="accordion-inner">
+            <div class="check-row">
+              <span class="dot amber"></span>
+              <span class="label">Can customers find you?
+                <span class="note">Google Business Profile is set up correctly and nothing blocks search engines. But nothing on the site is written for AI tools like ChatGPT or Perplexity to read directly — so it can get skipped when someone asks an AI instead of searching.</span>
+              </span>
+              <span class="status-word amber">Worth checking</span>
+            </div>
+            <div class="check-row">
+              <span class="dot green"></span>
+              <span class="label">Do customers understand you?
+                <span class="note">The homepage says exactly what the business does, where it covers, and why customers keep choosing it.</span>
+              </span>
+              <span class="status-word green">Passed these checks</span>
+            </div>
+            <div class="check-row">
+              <span class="dot amber"></span>
+              <span class="label">Do customers trust you?
+                <span class="note">5.0 stars from 21 real reviews, plus real project photos. But those reviews aren't set up to show automatically in search results, so a lot of that trust never gets seen before someone clicks through.</span>
+              </span>
+              <span class="status-word amber">Worth checking</span>
+            </div>
+            <div class="check-row">
+              <span class="dot green"></span>
+              <span class="label">Can customers take action?
+                <span class="note">A clickable phone number, clear "Book Free Consultation" buttons, and the site works properly on a phone.</span>
+              </span>
+              <span class="status-word green">Passed these checks</span>
+            </div>
+          </div></div>
+        </details>
+        <div class="case-meta">
+          <span style="font-size:13px;color:var(--ink-dim);">2 of 4 areas need attention</span>
+          <a class="btn btn-ghost" href="#hero-input">Check my website too <span class="arrow">→</span></a>
+        </div>
+      </div>
+      <p class="case-link">Live site checked: <a href="https://home-design-products.co.uk" target="_blank" rel="noopener">home-design-products.co.uk</a> — jointly owned by Tony (who runs this site) and his business partner Lee. This is our own business used as a worked example, not an independent client endorsement. Findings current as of this check; sites change, so we re-check before quoting anything.</p>
+    </div>
+  </section>
+
+  <section id="process" class="band">
+    <div class="wrap">
+      <span class="eyebrow">What you actually receive</span>
+      <h2>No 40-page report. Just what matters.</h2>
+
+      <div class="process-mobile">
+        <div class="step-card">
+          <div class="icon-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a13 13 0 010 18a13 13 0 010-18z"></path></svg></div>
+          <div><h3>1. Enter your website</h3><p>Tell us which business you want checked.</p></div>
+        </div>
+        <div class="step-card">
+          <div class="icon-tile mint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="7" x2="19" y2="7"></line><line x1="5" y1="12" x2="19" y2="12"></line><line x1="5" y1="17" x2="13" y2="17"></line></svg></div>
+          <div><h3>2. Receive your priorities</h3><p>See what's working and what may be costing enquiries.</p></div>
+        </div>
+        <div class="step-card">
+          <div class="icon-tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"></path><path d="M6 20l6-6 6 6"></path><circle cx="12" cy="4" r="1.6"></circle></svg></div>
+          <div><h3>3. Decide what happens next</h3><p>Fix it yourself, or ask Tony for help.</p></div>
+        </div>
+      </div>
+
+      <div class="process-desktop">
+        <div class="receive-item"><span class="num">1</span><h3>Your overall result</h3><p>Green, amber or red — so you know where you stand at a glance.</p></div>
+        <div class="receive-item"><span class="num">2</span><h3>What's already working</h3><p>So you don't waste money fixing something that isn't actually broken.</p></div>
+        <div class="receive-item"><span class="num">3</span><h3>Your three biggest problems</h3><p>In plain English — the things most likely costing you enquiries.</p></div>
+        <div class="receive-item"><span class="num">4</span><h3>Your three priority actions</h3><p>What to do first, ranked by what will actually move the needle.</p></div>
+        <div class="receive-item"><span class="num">5</span><h3>A no-pressure chat</h3><p>An invitation to talk it through with Tony — only if you want to.</p></div>
+        <div class="receive-item"><span class="num">6</span><h3>Your call, either way</h3><p>Fix it yourself, hire someone else, or ask us. Your choice either way.</p></div>
+      </div>
+
+      <div class="services-note">
+        <p>If there's work worth doing, we can help with any of it — from small homepage messaging fixes to Google
+        Business Profile corrections, AI-search visibility, site speed, better enquiry forms, or a full redesign
+        where one's genuinely needed. Nothing's pushed on you; the report tells you what's actually worth doing.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="trust">
+    <div class="wrap narrow">
+      <span class="eyebrow">Why listen to us</span>
+      <h2 style="margin-bottom:24px;">The person you'll actually talk to.</h2>
+      <div class="panel trust-panel">
+        <div class="avatar"><img src="data:image/jpeg;base64,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" alt="Tony Posgate" loading="lazy"></div>
+        <div>
+          <div class="trust-name">Tony Posgate</div>
+          <div class="trust-role">Home Design Products &amp; Don't Fix Your SEO</div>
+          <p class="trust-intro">
+            Tony's spent years helping North East homeowners cut through overwhelming choices at Home Design
+            Products — the same straight-talking approach shapes every audit here. If your report turns something
+            up worth fixing, Tony's who you'll actually speak to, not a call centre.
+          </p>
+          <p class="trust-contact">Prefer to talk it through first? Call Tony on <a href="tel:+447760881000">07760 881000</a> or email <a href="mailto:tony.posgate@gmail.com">tony.posgate@gmail.com</a>.</p>
+          <div class="trust-quote">
+            "Absolutely love our kitchen. Tony suggested things I would never have thought of. Stress free
+            fitting."
+            <cite>— Allison, Google review, Home Design Products</cite>
+          </div>
+          <p class="case-link" style="margin-top:14px;"><a href="/about">Read more about Tony →</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="band">
+    <div class="wrap narrow">
+      <span class="eyebrow">FAQ</span>
+      <h2>Before you ask.</h2>
+      <details class="faq-item">
+        <summary>Is this just a sales pitch for more SEO?<span class="chev">+</span></summary>
+        <div class="accordion-body"><div class="accordion-inner"><p>No — the whole point is to check first. If nothing needs fixing, we'll tell you that, and there's no pressure to buy anything.</p></div></div>
+      </details>
+      <details class="faq-item">
+        <summary>What does it cost?<span class="chev">+</span></summary>
+        <div class="accordion-body"><div class="accordion-inner"><p>The initial check and your first full report are free. You only pay if you decide you want help making changes.</p></div></div>
+      </details>
+      <details class="faq-item">
+        <summary>How long does it take?<span class="chev">+</span></summary>
+        <div class="accordion-body"><div class="accordion-inner"><p>The illustrative preview is instant. Your real, full report usually comes back within a few working days.</p></div></div>
+      </details>
+      <details class="faq-item">
+        <summary>Do I have to talk to a salesperson?<span class="chev">+</span></summary>
+        <div class="accordion-body"><div class="accordion-inner"><p>No. You get the report either way. Tony's happy to talk it through if you want to, but there's no obligation.</p></div></div>
+      </details>
+    </div>
+  </section>
+
+  <section id="final-cta">
+    <div class="wrap narrow">
+      <h2>Know what's actually holding your website back.</h2>
+      <p class="lede">Free check. Plain English. Tony will walk you through it if you want him to.</p>
+      <div class="final-cta-row">
+        <label for="site-url-2" class="sr-only">Your website address</label>
+        <input id="site-url-2" type="text" placeholder="yourbusiness.co.uk" />
+        <button class="btn" id="run-check-2" type="button">Check My Website <span class="arrow">→</span></button>
+      </div>
+      <p class="hero-note">Free initial check · no obligation</p>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div class="wrap" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;width:100%;">
+      <span class="wordmark" style="font-size:15px;">DON'T <span class="strike">FIX</span> YOUR SEO</span>
+      <span style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <a href="/about" style="font-size:12.5px;font-weight:600;color:var(--ink-dim);text-decoration:none;">About</a>
+        <span>dontfixyourseo.com · © <span id="year"></span></span>
+      </span>
+    </div>
+  </footer>
+</div>
+
+<div class="sticky-cta" id="sticky-cta">
+  <button class="btn" id="sticky-check-btn" type="button">Check My Website <span class="arrow">→</span></button>
+  <button class="dismiss" id="sticky-dismiss" type="button" aria-label="Dismiss">✕</button>
+</div>
+
+<script>
+(function(){
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  var urlInput = document.getElementById('site-url');
+  var runBtn = document.getElementById('run-check');
+  var resultPanel = document.getElementById('hero-result-panel');
+  var resultBadge = document.getElementById('result-badge');
+  var resultTitle = document.getElementById('result-title');
+  var resultSub = document.getElementById('result-sub');
+  var resultDate = document.getElementById('result-date');
+  var checkFootnote = document.getElementById('check-footnote');
+  var nextStepBlock = document.getElementById('next-step-block');
+  var nextStepText = document.getElementById('next-step-text');
+  var resultScopeNote = document.getElementById('result-scope-note');
+  var runBtnLabel = runBtn.innerHTML;
+
+  // Consistent status wording used across the results panel — and mirrored
+  // (not imported, this repo has no bundler) in functions/api/send-report.js
+  // so the emailed report reads identically.
+  var STATUS_LABEL = { green:'Passed these checks', amber:'Worth checking', red:'Needs attention', gray:'Could not verify' };
+  var STATUS_ICON = { green:'✓', amber:'!', red:'✕', gray:'?' };
+
+  function formatCheckedDate(d){
     try {
-      resolved = new URL(rawHref, origin);
+      return new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'long', year:'numeric' }).format(d);
     } catch (e) {
-      continue; // malformed href — skip rather than fail the whole check
+      return d.toDateString();
+    }
+  }
+
+  // Client-side fallback summary/next-step text for the illustrative demo
+  // path only (it never calls the real checker, so it can't use the real
+  // summariseRows()/nextStepFor() logic in functions/api/check.js — these
+  // three scenarios are hand-matched to their own fixed row data instead).
+  var scenarios = [
+    { overall:'amber', badgeChar:'!', title:'Good foundations, a couple of quick wins',
+      summary:'Three checks passed. One area is worth checking.',
+      nextStep:'Check that clear business details, reviews or photos are easy to find on your homepage — these help visitors trust the business quickly.',
+      rows:[
+      ['green','Shows up for the basics, but not fully set up for AI-search tools yet'],
+      ['green','Clear enough, could be sharper on why you vs. the competition'],
+      ['amber','Some trust signals present, but not easy to spot quickly'],
+      ['green','Contact details work, enquiry process is straightforward']
+    ]},
+    { overall:'red', badgeChar:'!', title:'A few things are likely costing you enquiries',
+      summary:'Two areas need attention, two areas are worth checking.',
+      nextStep:'Review your homepage description so it clearly summarises your business.',
+      rows:[
+      ['amber','Local visibility is patchy — worth checking your Google Business Profile'],
+      ['red','Not clear at a glance what you do or where you cover'],
+      ['amber','Few visible trust signals — reviews or photos are hard to find'],
+      ['red','No obvious way for a visitor to get in touch quickly']
+    ]},
+    { overall:'green', badgeChar:'✓', title:'Solid all round — a couple of small tweaks only',
+      summary:'Three checks passed. One area is worth checking.',
+      nextStep:'Check that visitors can easily reach a working contact page, email address, telephone number or enquiry form.',
+      rows:[
+      ['green','Found easily for local searches'],
+      ['green','Clear, easy to understand at a glance'],
+      ['green','Good trust signals on the page'],
+      ['amber','Enquiry process works, but could be quicker']
+    ]}
+  ];
+
+  function currentSite(){
+    var v = (urlInput.value || '').trim();
+    if (!v) v = 'yourbusiness.co.uk';
+    return v.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  }
+
+  // opts: { site, overall, badgeChar, title, rows, footnote, checkedAt (Date),
+  //         nextStep (string or null), unavailable (bool) }
+  function renderResult(opts){
+    var badge = opts.unavailable ? 'gray' : opts.overall;
+    resultBadge.className = 'badge-circle ' + badge;
+    resultBadge.textContent = opts.unavailable ? '?' : opts.badgeChar;
+    resultTitle.textContent = opts.title;
+    resultSub.textContent = 'for ' + opts.site;
+    if (resultDate) {
+      resultDate.textContent = 'Checked ' + formatCheckedDate(opts.checkedAt || new Date());
     }
 
-    if (resolved.hostname.toLowerCase() !== originHost) continue; // off-site link
+    for (var i = 0; i < 4; i++) {
+      var level = opts.unavailable ? 'gray' : opts.rows[i][0];
+      var dot = document.getElementById('dot-' + (i + 1));
+      var status = document.getElementById('status-' + (i + 1));
+      var note = document.getElementById('note-' + (i + 1));
+      dot.className = 'dot ' + level;
+      if (status) {
+        status.className = 'status-text ' + level;
+        status.textContent = STATUS_ICON[level] + ' ' + STATUS_LABEL[level];
+      }
+      note.textContent = ' — ' + opts.rows[i][1];
+    }
 
-    const segments = resolved.pathname.split('/').filter(Boolean);
-    if (!segments.length) continue; // links back to the homepage itself don't count
+    if (checkFootnote) checkFootnote.textContent = opts.footnote;
+    if (resultScopeNote) resultScopeNote.hidden = !!opts.unavailable;
 
-    const slug = segments[segments.length - 1]
-      .toLowerCase()
-      .replace(/\.(html?|php|aspx?|jsp)$/i, ''); // ignore a trailing file extension
+    if (nextStepBlock && nextStepText) {
+      if (opts.nextStep) {
+        nextStepText.textContent = opts.nextStep;
+        nextStepBlock.hidden = false;
+      } else {
+        nextStepBlock.hidden = true;
+      }
+    }
 
-    if (CONTACT_PATH_SLUGS.has(slug)) return true;
+    resultPanel.hidden = false;
   }
-  return false;
-}
 
-// Pull real, checkable signals out of the raw HTML. No API key needed —
-// this is the core of what makes results genuine rather than illustrative.
-// `origin` (e.g. "https://example.co.uk") is optional but needed to resolve
-// relative links for the internal-contact-page check below; when omitted,
-// that one signal is simply skipped rather than throwing.
-export function analyzeHtml(html, origin) {
-  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
-  const textOnly = stripped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  function renderIllustrativeDemo(site){
+    var s = scenarios[Math.floor(Math.random() * scenarios.length)];
+    renderResult({
+      site: site, overall: s.overall, badgeChar: s.badgeChar,
+      title: s.summary, rows: s.rows, checkedAt: new Date(), nextStep: s.nextStep,
+      footnote: 'Illustrative preview, not a live scan of the address above. Your real report checks the actual site.'
+    });
+  }
 
-  const get = (re) => {
-    const m = html.match(re);
-    return m ? m[1].trim() : null;
-  };
+  // Real check: tries the site's own /api/check endpoint (a Cloudflare Pages
+  // Function that actually fetches and reads the submitted URL). Until that
+  // backend is deployed — or if the request fails for any reason — this
+  // falls back to the illustrative demo automatically. Nothing here changes
+  // behaviour in this preview; it only takes effect once the real backend
+  // exists at /api/check.
+  function runCheck(){
+    var site = currentSite();
+    var controller = ('AbortController' in window) ? new AbortController() : null;
+    var timer = controller ? setTimeout(function(){ controller.abort(); }, 12000) : null;
 
-  const title = get(/<title[^>]*>([^<]*)<\/title>/i);
-  const metaDesc = get(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i)
-    || get(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i);
-  const viewport = /<meta[^>]+name=["']viewport["']/i.test(html);
-  const canonical = /<link[^>]+rel=["']canonical["']/i.test(html);
-  const ogTitle = /<meta[^>]+property=["']og:title["']/i.test(html);
-  const h1Count = (html.match(/<h1[\s>]/gi) || []).length;
+    runBtn.disabled = true;
+    runBtn.innerHTML = 'Checking…';
 
-  const jsonLdBlocks = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
-    .map((m) => m[1]);
-  const schemaTypes = [];
-  jsonLdBlocks.forEach((block) => {
-    try {
-      const data = JSON.parse(block);
-      const items = Array.isArray(data) ? data : (data['@graph'] || [data]);
-      items.forEach((item) => {
-        if (item && item['@type']) {
-          const t = item['@type'];
-          (Array.isArray(t) ? t : [t]).forEach((tt) => schemaTypes.push(String(tt)));
-        }
-      });
-    } catch (e) { /* ignore malformed JSON-LD */ }
+    fetch('/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: site }),
+      signal: controller ? controller.signal : undefined
+    }).then(function(res){
+      if (!res.ok) throw new Error('bad status');
+      return res.json();
+    }).then(function(data){
+      if (timer) clearTimeout(timer);
+      if (data && data.real && data.rows && data.rows.length === 4) {
+        var footnote = 'Real check of ' + site + ' — based on what we could automatically find on the page. '
+          + (data.aiNote && data.aiNote.reason ? data.aiNote.reason + ' ' : '')
+          + (data.speedNote ? data.speedNote + '.' : 'For a full human review, use the form below.');
+        renderResult({
+          site: site, overall: data.overall, badgeChar: data.badgeChar,
+          title: data.summary || data.title, rows: data.rows,
+          checkedAt: data.checkedAt ? new Date(data.checkedAt) : new Date(),
+          nextStep: data.nextStep, footnote: footnote
+        });
+      } else if (data && data.error) {
+        // Reached the backend but it couldn't load the site (e.g. typo, site down).
+        // This is a failed/unavailable SCAN, not four genuine red findings — shown
+        // as "Could not verify" rather than red, so it isn't read as four real
+        // problems we actually found.
+        renderResult({
+          site: site, unavailable: true, title: data.error,
+          rows: [
+            [null, data.message || 'Could not load that site — check the address and try again.'],
+            [null, 'Could not run this check'],
+            [null, 'Could not run this check'],
+            [null, 'Could not run this check']
+          ],
+          checkedAt: new Date(),
+          nextStep: 'We couldn’t load and check the site directly — double-check the address is correct and the site is online, then try again.',
+          footnote: 'We tried to check ' + site + ' directly and couldn’t reach it.'
+        });
+      } else {
+        renderIllustrativeDemo(site);
+      }
+    }).catch(function(){
+      if (timer) clearTimeout(timer);
+      // /api/check isn't deployed yet, or the request failed/timed out — safe fallback.
+      renderIllustrativeDemo(site);
+    }).finally(function(){
+      runBtn.disabled = false;
+      runBtn.innerHTML = runBtnLabel;
+    });
+  }
+
+  runBtn.addEventListener('click', runCheck);
+  urlInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); runCheck(); }
   });
 
-  const hasLocalBusinessSchema = schemaTypes.some((t) => /LocalBusiness|Organization|Store|HomeAndConstructionBusiness|ProfessionalService/i.test(t));
-  const hasReviewSchema = schemaTypes.some((t) => /Review|AggregateRating/i.test(t));
-  const hasFaqSchema = schemaTypes.some((t) => /FAQPage/i.test(t));
+  // Enquiry capture: submits to Formspree (https://formspree.io) so a lead is
+  // logged and emailed even if the visitor's device has no mail app configured.
+  // To go live: create a free form at formspree.io, then paste its endpoint
+  // below (looks like 'https://formspree.io/f/xxxxxxxx'). Until it's set,
+  // this falls back to the original mailto flow automatically — nothing breaks.
+  var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mwlkgbnn';
 
-  const phonePresent = /(\+?\d[\d\s().-]{7,}\d)/.test(textOnly) || /href=["']tel:/i.test(html);
-  const mailtoLink = /href=["']mailto:/i.test(html);
-  const telLink = /href=["']tel:/i.test(html);
-  const contactFormPresent = /<form[\s\S]*?<\/form>/i.test(html);
-  const addressHint = /\b(street|st\.|road|rd\.|avenue|ave\.|lane|drive|way)\b/i.test(textOnly);
-  const internalContactLinkPresent = hasInternalContactLink(html, origin);
+  var mcForm = document.getElementById('mc-form');
+  var mcSubmit = document.getElementById('mc-submit');
+  var miniStatus = document.getElementById('mini-status');
+  var mcSubmitLabel = mcSubmit.innerHTML;
+  var mcSiteHidden = document.getElementById('mc-site-hidden');
 
-  return {
-    title, titleLength: title ? title.length : 0,
-    metaDesc, metaDescLength: metaDesc ? metaDesc.length : 0,
-    viewport, canonical, ogTitle, h1Count,
-    schemaTypes, hasLocalBusinessSchema, hasReviewSchema, hasFaqSchema,
-    phonePresent, mailtoLink, telLink, contactFormPresent, addressHint,
-    internalContactLinkPresent,
-  };
-}
+  function mailtoFallback(name, email, site){
+    var subject = 'Full website check request — ' + site;
+    var body = 'Name: ' + (name || '—') + '\n' +
+               'Email: ' + email + '\n' +
+               'Website: ' + site;
+    var href = 'mailto:tony.posgate@gmail.com' +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+    window.location.href = href;
+    miniStatus.textContent = 'Opening your email app — hit send there to finish.';
+  }
 
-async function fetchPageSpeed(url, apiKey) {
-  const api = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed'
-    + '?url=' + encodeURIComponent(url)
-    + '&key=' + apiKey
-    + '&strategy=mobile&category=performance&category=seo&category=accessibility';
-  const res = await fetchWithTimeout(api, 20000);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const lr = data.lighthouseResult;
-  if (!lr || !lr.categories) return null;
-  const pct = (c) => (lr.categories[c] && typeof lr.categories[c].score === 'number')
-    ? Math.round(lr.categories[c].score * 100) : null;
-  return {
-    performance: pct('performance'),
-    seo: pct('seo'),
-    accessibility: pct('accessibility'),
-  };
-}
+  // Genuine <form> now wraps these fields (see the markup above), so this
+  // listens for the form's submit event rather than the button's click event.
+  // preventDefault() stops the native POST so the exact same JS-driven flow
+  // below still runs exactly as before; a real <form action method> is only
+  // used if JavaScript never runs at all (a strict improvement over before,
+  // when the button — type="button", no form — did nothing without JS).
+  mcForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = document.getElementById('mc-name').value.trim();
+    var email = document.getElementById('mc-email').value.trim();
+    var site = currentSite();
+    if (mcSiteHidden) { mcSiteHidden.value = site; }
 
-async function scoreWithClaude(html, hostname, apiKey) {
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 6000);
+    if (!email) {
+      miniStatus.textContent = 'Add your email so we know where to send it.';
+      return;
+    }
 
-  if (!text) return null;
+    if (!FORMSPREE_ENDPOINT) {
+      mailtoFallback(name, email, site);
+      return;
+    }
+    // Additive: also email the visitor a fuller copy of their report via our
+    // own /api/send-report endpoint. This is completely independent of the
+    // Formspree notification above — if it fails, or the backend isn't
+    // deployed yet, nothing here changes; the existing "we'll be in touch"
+    // flow (and everything else on the page) is untouched either way.
+    fetch('/api/send-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: site, email: email, name: name })
+    }).catch(function(){ /* silent on purpose — this is a bonus, not the main flow */ });
+    mcSubmit.disabled = true;
+    mcSubmit.innerHTML = 'Sending…';
+    miniStatus.textContent = '';
 
-  const prompt = 'You are assessing whether a small local business website (' + hostname + ') is easy '
-    + 'for an AI search assistant (like ChatGPT or Claude) to understand and recommend to a customer. '
-    + 'Based only on the extracted page text below, reply with ONLY a JSON object, no other text: '
-    + '{"score":"green"|"amber"|"red","reason":"one short plain-English sentence, max 20 words"}. '
-    + 'Page text:\n\n' + text;
-
-  const res = await fetchWithTimeout('https://api.anthropic.com/v1/messages', 20000, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-haiku-latest',
-      max_tokens: 200,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+    fetch(FORMSPREE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name || '—', email: email, website: site,
+        _subject: 'Full website check request — ' + site })
+    }).then(function(res){
+      if (res.ok) {
+        miniStatus.textContent = 'Thanks — we\'ll be in touch shortly.';
+        document.getElementById('mc-name').value = '';
+        document.getElementById('mc-email').value = '';
+      } else {
+        mailtoFallback(name, email, site);
+      }
+    }).catch(function(){
+      mailtoFallback(name, email, site);
+    }).finally(function(){
+      mcSubmit.disabled = false;
+      mcSubmit.innerHTML = mcSubmitLabel;
+    });
   });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const raw = data && data.content && data.content[0] && data.content[0].text;
-  if (!raw) return null;
-  try {
-    const match = raw.match(/\{[\s\S]*\}/);
-    const parsed = JSON.parse(match ? match[0] : raw);
-    if (parsed && parsed.score) return parsed;
-  } catch (e) { /* ignore — aiNote stays unused */ }
-  return null;
-}
 
-// Turn real signals into the same shape the page's front-end already
-// expects: an overall badge + 4 rows (find / understand / trust / act).
-// Exported (additively — call sites elsewhere in this file are unaffected)
-// so it can be unit-tested directly against synthetic signal objects.
-export function buildResult(s, pageSpeed, aiNote, hostname) {
-  const rows = [];
-
-  // 1) Can customers find you?
-  {
-    const points = [];
-    let level = 'green';
-    if (!s.canonical) points.push('no canonical link tag');
-    if (!s.sitemapPresent) points.push('no sitemap.xml found');
-    if (!s.robotsPresent) points.push('no robots.txt found');
-    if (!s.https) points.push('site isn’t on HTTPS');
-    if (points.length >= 2) level = 'red';
-    else if (points.length === 1) level = 'amber';
-    const note = points.length
-      ? points.join(', ')
-      : (s.llmsTxtPresent ? 'sitemap and robots.txt in place, even has an llms.txt' : 'sitemap and robots.txt are in place');
-    rows.push([level, capitalize(note)]);
+  // Bottom CTA + sticky bar bridge into the single real input/tool in the hero
+  function goToHeroAndCheck(prefillValue){
+    if (prefillValue) { urlInput.value = prefillValue; }
+    var target = document.getElementById('hero-input');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(function(){
+      urlInput.focus();
+      if (prefillValue) { runCheck(); }
+    }, 350);
   }
 
-  // 2) Do customers understand you?
-  {
-    const points = [];
-    let level = 'green';
-    if (!s.title || s.titleLength < 10) points.push('page title is missing or too short');
-    if (!s.metaDesc) points.push('no meta description');
-    else if (s.metaDescLength < 50 || s.metaDescLength > 165) points.push('meta description isn’t a useful length');
-    if (s.h1Count === 0) points.push('no main heading (H1) found');
-    if (points.length >= 2) level = 'red';
-    else if (points.length === 1) level = 'amber';
-    const note = points.length ? points.join(', ') : 'clear title, description and headings in place';
-    rows.push([level, capitalize(note)]);
+  var url2 = document.getElementById('site-url-2');
+  document.getElementById('run-check-2').addEventListener('click', function(){
+    goToHeroAndCheck((url2.value || '').trim());
+  });
+  url2.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); goToHeroAndCheck((url2.value || '').trim()); }
+  });
+
+  document.getElementById('sticky-check-btn').addEventListener('click', function(){
+    goToHeroAndCheck(null);
+  });
+
+  // Sticky mobile CTA: hide while hero input is in view, allow dismiss
+  var stickyBar = document.getElementById('sticky-cta');
+  var dismissed = false;
+  document.getElementById('sticky-dismiss').addEventListener('click', function(){
+    dismissed = true;
+    stickyBar.classList.add('hidden');
+  });
+
+  if ('IntersectionObserver' in window) {
+    var heroInputEl = document.getElementById('hero-input');
+    var io = new IntersectionObserver(function(entries){
+      if (dismissed) return;
+      var visible = entries[0].isIntersecting;
+      stickyBar.classList.toggle('hidden', visible);
+    }, { threshold: 0.2 });
+    io.observe(heroInputEl);
   }
+})();
+</script>
 
-  // 3) Do customers trust you?
-  {
-    const points = [];
-    let level = 'amber'; // trust signals are inherently harder to fully verify automatically
-    if (s.hasLocalBusinessSchema) points.push('business details are machine-readable (schema.org)');
-    if (s.hasReviewSchema) points.push('review markup found');
-    if (s.hasFaqSchema) points.push('FAQ markup found');
-    if (s.addressHint) points.push('an address appears on the page');
-    const goodCount = points.length;
-    if (goodCount >= 2) level = 'green';
-    else if (goodCount === 0) level = 'red';
-    const note = points.length ? points.join(', ') : 'no structured business, review or address info found';
-    rows.push([level, capitalize(note)]);
-  }
-
-  // 4) Can customers take action?
-  {
-    const contactCount = [s.phonePresent, s.mailtoLink || s.telLink, s.contactFormPresent, s.internalContactLinkPresent].filter(Boolean).length;
-    let level = 'red';
-    if (contactCount >= 2) level = 'green';
-    else if (contactCount === 1) level = 'amber';
-    const bits = [];
-    if (s.phonePresent) bits.push('a phone number');
-    if (s.mailtoLink || s.telLink) bits.push('a clickable contact link');
-    if (s.contactFormPresent) bits.push('a contact form');
-    if (s.internalContactLinkPresent) bits.push('a link to a dedicated contact page');
-    let note = bits.length ? 'Found ' + bits.join(', ') : 'No phone, contact link or form found on the page';
-    if (!s.viewport) note += (bits.length ? ' — but no mobile viewport tag, check it works on phones' : ' (and no mobile viewport tag either)');
-    rows.push([level, note]);
-  }
-
-  // Fold in PageSpeed, if we have it, by nudging row 4 (action/speed) and adding context.
-  let speedNote = null;
-  if (pageSpeed && typeof pageSpeed.performance === 'number') {
-    speedNote = 'Mobile speed score: ' + pageSpeed.performance + '/100 (Google PageSpeed)';
-    if (pageSpeed.performance < 50 && rows[3][0] === 'green') rows[3][0] = 'amber';
-  }
-
-  const levelScore = { green: 2, amber: 1, red: 0 };
-  const avg = rows.reduce((sum, r) => sum + levelScore[r[0]], 0) / rows.length;
-  let overall = 'amber';
-  let badgeChar = '!';
-  let title;
-  if (avg >= 1.6) { overall = 'green'; badgeChar = '✓'; title = 'Solid foundations, only small tweaks needed'; }
-  else if (avg <= 0.7) { overall = 'red'; badgeChar = '!'; title = 'A few things are likely costing you enquiries'; }
-  else { title = 'Good foundations, a couple of quick wins'; }
-
-  return {
-    real: true,
-    hostname,
-    overall,
-    badgeChar,
-    title,
-    rows,
-    pageSpeed,
-    speedNote,
-    aiNote: aiNote && aiNote.reason ? aiNote : null,
-  };
-}
-
-function capitalize(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
-}
+</body>
+</html>
